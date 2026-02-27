@@ -1,0 +1,45 @@
+$ErrorActionPreference = "Stop"
+
+$RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$UvRoot = Join-Path $RootDir ".numel\uv"
+if (-not $env:UV_CACHE_DIR) { $env:UV_CACHE_DIR = Join-Path $RootDir ".numel/cache" }
+if (-not $env:UV_PYTHON_INSTALL_DIR) { $env:UV_PYTHON_INSTALL_DIR = Join-Path $RootDir ".numel/python" }
+if ($IsWindows -or $env:OS -eq "Windows_NT") {
+  $Candidates = @(
+    (Join-Path $UvRoot "uv.exe"),
+    (Join-Path $UvRoot "bin/uv.exe")
+  )
+} else {
+  $Candidates = @(
+    (Join-Path $UvRoot "uv"),
+    (Join-Path $UvRoot "bin/uv")
+  )
+}
+$UvBin = $null
+foreach ($c in $Candidates) {
+  if (Test-Path $c) {
+    $UvBin = $c
+    break
+  }
+}
+
+if (-not $UvBin) {
+  New-Item -ItemType Directory -Force -Path $UvRoot | Out-Null
+  $env:UV_UNMANAGED_INSTALL = $UvRoot
+  Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+  foreach ($c in $Candidates) {
+    if (Test-Path $c) {
+      $UvBin = $c
+      break
+    }
+  }
+}
+
+if (-not $UvBin) {
+  throw "uv was installed but binary not found under $UvRoot"
+}
+
+& $UvBin python install 3.14
+$env:UV_BIN = $UvBin
+& $UvBin run --python 3.14 (Join-Path $RootDir "bootstrap.py") @args
+exit $LASTEXITCODE

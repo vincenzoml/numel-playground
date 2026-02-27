@@ -19,7 +19,9 @@ import uvicorn
 
 from   dotenv    import load_dotenv
 from   fastapi   import FastAPI
+from   fastapi.staticfiles import StaticFiles
 from   inspect   import getsource
+from   pathlib   import Path
 from   typing    import Any
 
 
@@ -38,6 +40,7 @@ load_dotenv()
 
 DEFAULT_APP_SEED : int = 777
 DEFAULT_APP_PORT : int = 8000
+WEB_DIR          : Path = Path(__file__).resolve().parent.parent / "web"
 
 
 def _asyncio_exception_handler(loop, context):
@@ -73,6 +76,11 @@ async def run_server(args: Any):
 	server = uvicorn.Server(config)
 
 	setup_api(server, app, event_bus, schema_code, manager, engine)
+	if WEB_DIR.exists():
+		# Keep API routes first, then fall through to static frontend content.
+		app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+	else:
+		log_print(f"Warning: web directory not found at {WEB_DIR}; frontend static files not mounted")
 
 	await server  .serve  ()
 	await manager .remove ()

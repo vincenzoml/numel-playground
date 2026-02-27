@@ -177,3 +177,5 @@ cython_debug/
 .claude/
 storage/
 tmp/
+.vscode/settings.json
+.numel/
